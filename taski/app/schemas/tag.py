@@ -1,8 +1,7 @@
 from typing import Optional
-from datetime import datetime
 
 from pydantic import (
-    BaseModel, Field, Extra, PositiveInt
+    BaseModel, Extra
 )
 
 
@@ -31,7 +30,6 @@ class TagAllDB(TagBase):
     и получении пожертвований пользователя.
     """
     id: Optional[int]
-    create_date: Optional[datetime]
 
     class Config:
         orm_mode = True
@@ -39,8 +37,6 @@ class TagAllDB(TagBase):
 
 class TagDB(TagBase):
     """Схема для получения всех пожертвований."""
-    create_date: Optional[datetime]
-    close_date: Optional[datetime]
 
     class Config:
         orm_mode = True

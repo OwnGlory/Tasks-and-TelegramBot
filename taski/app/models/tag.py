@@ -5,12 +5,12 @@ from sqlalchemy import (
 from sqlalchemy.orm import relationship
 
 
-from app.core.db import Base
+from .base import Base, task_tag
 
 
 class Tag(Base):
     """
     Модель таблицы тэгов.
     """
-    task = relationship('Task')
     title = Column(String(100), unique=True, nullable=False)
+    tasks = relationship("Task", secondary=task_tag, back_populates='tags')

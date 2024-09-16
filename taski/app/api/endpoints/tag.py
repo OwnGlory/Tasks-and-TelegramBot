@@ -11,8 +11,6 @@ from app.core.user import current_superuser, current_user
 from app.models import User
 from app.core.db import get_async_session
 from app.crud.donation import donation_crud
-from app.crud.investions import DataBaseWork
-from app.services.investions import invest_donation
 
 router = APIRouter()
 

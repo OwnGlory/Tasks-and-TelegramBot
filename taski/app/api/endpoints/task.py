@@ -1,111 +1,104 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_async_session
-from app.crud.charity_project import charity_projects_crud
-from app.crud.investions import DataBaseWork
-from app.schemas.charity_project import (
-    CharityProjectCreate,
-    CharityProjectUpdate,
-    CharityProjectDB,
+from app.crud.task import task_crud
+from app.models import User
+from app.schemas.task import (
+    TaskCreate,
+    TaskUpdate,
+    TaskDB,
 )
 from app.api.validators import (
     check_name_duplicate, check_project_exists,
-    check_project_open, check_project_full_amount,
-    check_project_invested_amount, check_valid_name_for_project,
-    check_valid_full_amount_for_project, check_valid_description_for_project
+    check_valid_name_for_project,
+    check_valid_description_for_project
 )
-from app.services.investions import invest_in_project
-from app.core.user import current_superuser
+from app.core.user import current_superuser, current_user
 
 router = APIRouter()
 
 
 @router.post(
     '/',
-    response_model=CharityProjectDB,
+    response_model=TaskDB,
     response_model_exclude_none=True,
     dependencies=[Depends(current_superuser)]
 )
-async def create_new_charity_project(
-        charity_project: CharityProjectCreate,
-        session: AsyncSession = Depends(get_async_session)
+async def create_new_task(
+        task: TaskCreate,
+        session: AsyncSession = Depends(get_async_session),
+        user: User = Depends(current_user),
 ):
     """
-    Создание объекта CharityProject с валидацией входных данных.
+    Создание объекта Task с валидацией входных данных.
     """
-    data_base_work = DataBaseWork(session)
-    await check_valid_name_for_project(charity_project)
-    await check_name_duplicate(charity_project.name, session)
-    new_project = await charity_projects_crud.create(charity_project, session)
-    await invest_in_project(new_project, data_base_work)
-    session.refresh(new_project)
-    return new_project
+    await check_valid_name_for_project(task)
+    await check_name_duplicate(task.name, session)
+    new_task = await task_crud.create(task, session, user)
+    session.refresh(new_task)
+    return new_task
 
 
 @router.get(
-    '/',
-    response_model=list[CharityProjectDB],
+    '/{my}',
+    response_model=list[TaskDB],
     response_model_exclude_none=True,
 )
-async def get_all_charity_projects(
-    session: AsyncSession = Depends(get_async_session)
+async def get_all_tasks(
+    session: AsyncSession = Depends(get_async_session),
+    my: User = Depends(current_user)
 ):
     """
-    Получение всех объектов CharityProject.
+    Получение всех объектов Task.
     """
-    projects_from_db = await charity_projects_crud.get_multi(session)
-    return projects_from_db
+    task_from_db = await task_crud.get_multi(session, user=my)
+    if task_from_db is None:
+        raise HTTPException(
+            status_code=404,
+            detail='Задач пока нету.'
+        )
+    return task_from_db
 
 
 @router.patch(
-    '/{project_id}',
-    response_model=CharityProjectDB,
+    '/{task_id}',
+    response_model=TaskDB,
     response_model_exclude_none=True,
     dependencies=[Depends(current_superuser)]
 )
-async def partially_update_charity_project(
-        project_id: int,
-        obj_in: CharityProjectUpdate,
-        session: AsyncSession = Depends(get_async_session)
+async def partially_update_task(
+        task_id: int,
+        obj_in: TaskUpdate,
+        session: AsyncSession = Depends(get_async_session),
+        my: User = Depends(current_user),
 ):
     """
-    Частичное обновление данных для CharityProject c валидацией.
+    Частичное обновление данных для Task c валидацией.
     """
-    charity_project = await check_project_exists(
-        project_id, session
-    )
+    task = await check_project_exists(task_id, session, my)
 
-    await check_project_open(charity_project)
-    await check_project_full_amount(obj_in, charity_project)
     if obj_in.name is not None:
         await check_valid_name_for_project(obj_in)
         await check_name_duplicate(obj_in.name, session)
-    await check_valid_full_amount_for_project(obj_in)
     await check_valid_description_for_project(obj_in)
 
-    charity_project = await charity_projects_crud.update(
-        charity_project, obj_in, session
-    )
-    return charity_project
+    task = await task_crud.update(task, obj_in, session, my)
+    return task
 
 
 @router.delete(
-    '/{project_id}',
+    '/{task_id}',
     dependencies=[Depends(current_superuser)]
 )
 async def remove_charity_project(
-        project_id: int,
-        session: AsyncSession = Depends(get_async_session)
+        task_id: int,
+        session: AsyncSession = Depends(get_async_session),
+        my: User = Depends(current_user),
 ):
     """
-    Удаление объекта CharityProject.
+    Удаление объекта Task.
     """
-    charity_project = await check_project_exists(
-        project_id, session
-    )
-    await check_project_invested_amount(charity_project)
-    charity_project = await charity_projects_crud.remove(
-        charity_project, session
-    )
-    return charity_project
+    task = await check_project_exists(task_id, session, my)
+    task = await task_crud.remove(task, session, my)
+    return task

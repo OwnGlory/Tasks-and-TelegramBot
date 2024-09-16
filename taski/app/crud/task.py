@@ -1,12 +1,10 @@
-from typing import Optional
-from datetime import timedelta
+from datetime import timedelta, datetime
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi.encoders import jsonable_encoder
 
-from app.models import CharityProject
-from app.crud.base import CRUDBase
+from app.models import Task, User, Tag
 
 
 def format_timediff(timediff: timedelta) -> str:
@@ -18,18 +16,34 @@ def format_timediff(timediff: timedelta) -> str:
     return f"{days} days, {hours}:{minutes}:{seconds}.{microseconds:06d}"
 
 
-class CRUDCharityProject(CRUDBase):
-    """Класс для CRUD операций CharityProject."""
+class CRUDTask:
+    """Класс для CRUD операций Task."""
+
+    def __init__(self, model):
+        self.model = model
+
+    async def get_multi(
+            self,
+            session: AsyncSession,
+            user: User
+    ):
+        """Получение нескольких объектов из БД."""
+        db_objs = await session.execute(
+            select(self.model).where(self.model.user_id == user.id)
+        )
+        return db_objs.scalars().all()
 
     async def get(
             self,
             obj_id: int,
-            session: AsyncSession
+            session: AsyncSession,
+            user: User
     ):
         """Получение объекта их БД по id."""
         db_obj = await session.execute(
             select(self.model).where(
-                self.model.id == obj_id
+                self.model.id == obj_id,
+                self.model.user_id == user.id
             )
         )
         return db_obj.scalars().first()
@@ -38,9 +52,12 @@ class CRUDCharityProject(CRUDBase):
             self,
             obj_in,
             session: AsyncSession,
+            user: User
     ):
         """Создание объекта в БД."""
         obj_in_data = obj_in.dict()
+        if user is not None:
+            obj_in_data['user_id'] = user.id
         db_obj = self.model(**obj_in_data)
         session.add(db_obj)
         await session.commit()
@@ -60,6 +77,7 @@ class CRUDCharityProject(CRUDBase):
         for field in obj_data:
             if field in update_data:
                 setattr(db_obj, field, update_data[field])
+        db_obj.update_date = datetime.now()
         session.add(db_obj)
         await session.commit()
         await session.refresh(db_obj)
@@ -75,45 +93,15 @@ class CRUDCharityProject(CRUDBase):
         await session.commit()
         return db_obj
 
-    async def get_project_id_by_name(
-        self,
-        project_name: str,
+    async def get_tasks_by_tag(
+        tag: str,
         session: AsyncSession
-    ) -> Optional[int]:
-        """Получение объекта по имени."""
-        db_project_id = await session.execute(
-            select(CharityProject.id).where(
-                CharityProject.name == project_name
-            )
+    ) -> list[Task]:
+        """Получение задач по тегу."""
+        result = await session.execute(
+            select(Task).join(Task.tags).where(Tag.title == tag)
         )
-        return db_project_id.scalars().first()
-
-    async def get_all_close_project(
-            self,
-            session: AsyncSession,
-    ) -> list[dict[str, str, str]]:
-        difference_stmt = (
-            func.julianday(CharityProject.close_date) -
-            func.julianday(CharityProject.create_date)
-        )
-        close_projects = await session.execute(
-            select([CharityProject])
-            .where(CharityProject.fully_invested == 1,)
-            .order_by(difference_stmt)
-        )
-        close_projects = close_projects.scalars().all()
-        projects_list = [
-            {
-                'name': project.name,
-                'duration': format_timediff(
-                    project.close_date - project.create_date
-                ),
-                'description': project.description
-            }
-            for project in close_projects
-        ]
-        print(projects_list)
-        return projects_list
+        return result.scalars().all()
 
 
-charity_projects_crud = CRUDCharityProject(CharityProject)
+task_crud = CRUDTask(Task)
