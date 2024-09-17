@@ -12,5 +12,5 @@ from app.core.db import Base
 
 class User(SQLAlchemyBaseUserTable[int], Base):
     """Модель для таблицы Пользователи."""
-    task = relationship('Task')
+    tasks = relationship('Task')
     telegram_username = Column(String(150), unique=True, nullable=True)

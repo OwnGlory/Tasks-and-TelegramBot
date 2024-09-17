@@ -1,3 +1,5 @@
+from typing import Optional
+
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -11,9 +13,9 @@ class CRUDTag:
         self.model = model
 
     async def get_multi(
-            self,
-            session: AsyncSession
-    ):
+        self,
+        session: AsyncSession
+    ) -> list[Tag]:
         """Получение нескольких объектов из БД."""
         db_objs = await session.execute(
             select(self.model)
@@ -24,7 +26,7 @@ class CRUDTag:
             self,
             obj_id: int,
             session: AsyncSession
-    ):
+    ) -> Tag:
         """Получение объекта их БД по id."""
         db_obj = await session.execute(
             select(self.model).where(self.model.id == obj_id)
@@ -35,7 +37,7 @@ class CRUDTag:
         self,
         obj_in,
         session: AsyncSession
-    ):
+    ) -> Tag:
         """
         Создание объекта в БД.
         """
@@ -45,6 +47,19 @@ class CRUDTag:
         await session.commit()
         await session.refresh(db_obj)
         return db_obj
+
+    async def get_tag_id_by_name(
+        self,
+        tag_title: str,
+        session: AsyncSession,
+    ) -> Optional[Tag]:
+        """Получение объекта по имени."""
+        db_tag = await session.execute(
+            select(Tag).where(
+                Tag.title == tag_title
+            )
+        )
+        return db_tag.scalars().first()
 
 
 tag_crud = CRUDTag(Tag)

@@ -7,7 +7,7 @@ from app.schemas.tag import (
     TagAllDB,
 )
 
-from app.api.validators import check_name_duplicate
+from app.api.validators import check_name_duplicate_for_tag
 from app.core.user import current_superuser, current_user
 from app.core.db import get_async_session
 from app.crud.tag import tag_crud
@@ -27,7 +27,7 @@ async def create_new_tag(
         session: AsyncSession = Depends(get_async_session),
 ):
     """Создание объекта Tag."""
-    await check_name_duplicate(tag.title, session)
+    await check_name_duplicate_for_tag(tag.title, session)
     new_tag = await tag_crud.create(tag, session)
     return new_tag
 

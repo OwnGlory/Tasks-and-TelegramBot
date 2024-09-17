@@ -6,7 +6,7 @@ from app.models.user import User
 router = APIRouter()
 
 
-@router.post("/auth/telegram")
+@router.post("/")
 async def link_telegram_account(
     telegram_username: str,
     email: str,

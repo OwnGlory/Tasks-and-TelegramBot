@@ -2,10 +2,11 @@ from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.crud.task import task_crud
+from app.crud.tag import tag_crud
 from app.models import Task, User
 
 
-async def check_name_duplicate(
+async def check_name_duplicate_for_task(
         task_name: str,
         session: AsyncSession,
         user: User
@@ -15,6 +16,21 @@ async def check_name_duplicate(
         task_name, session, user
     )
     if task_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Проект с таким именем уже существует!",
+        )
+
+
+async def check_name_duplicate_for_tag(
+        tag_name: str,
+        session: AsyncSession,
+) -> None:
+    """Проверка на совпадение имени в БД."""
+    tag_id = await tag_crud.get_tag_id_by_name(
+        tag_name, session
+    )
+    if tag_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Проект с таким именем уже существует!",

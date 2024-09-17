@@ -1,7 +1,9 @@
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 
 from pydantic import BaseModel, Field, Extra
+
+from app.schemas.tag import TagDB
 
 
 class TaskBase(BaseModel):
@@ -13,9 +15,9 @@ class TaskBase(BaseModel):
         extra = Extra.forbid
         schema_extra = {
             'example': {
-                "name": "Первый проект",
+                "name": "5",
                 "description": "Проект для пожертвований",
-                "create_date": "15.09.2024"
+                "tags": ["Важное"]
             }
         }
 
@@ -28,7 +30,7 @@ class TaskCreate(TaskBase):
         description='Уникальное названние задачи'
     )
     description: str = Field(..., min_length=2)
-    user_id: int
+    tags: Optional[List[str]] = Field(None, title='Список тегов')
 
 
 class TaskUpdate(TaskBase):
@@ -36,11 +38,12 @@ class TaskUpdate(TaskBase):
     user_id: int
 
 
-class TaskDB(BaseModel):
+class TaskDB(TaskBase):
     """Схема для вывода информации о задаче."""
     id: Optional[int] = Field(0)
     create_date: Optional[datetime]
     update_date: Optional[datetime]
+    tags: Optional[List[str]]
 
     class Config:
         orm_mode = True

@@ -10,7 +10,7 @@ from app.schemas.task import (
     TaskDB,
 )
 from app.api.validators import (
-    check_name_duplicate, check_task_exists,
+    check_name_duplicate_for_task, check_task_exists,
     check_valid_name_for_task,
 )
 from app.core.user import current_user
@@ -33,10 +33,32 @@ async def create_new_task(
     Создание объекта Task с валидацией входных данных.
     """
     await check_valid_name_for_task(task)
-    await check_name_duplicate(task.name, session, user)
+    await check_name_duplicate_for_task(task.name, session, user)
     new_task = await task_crud.create(task, session, user)
-    session.refresh(new_task)
+    await session.refresh(new_task)
     return new_task
+
+
+@router.get(
+    '/',
+    response_model=list[TaskDB],
+    response_model_exclude_none=True,
+    dependencies=[Depends(current_user)]
+)
+async def get_all_tasks(
+    session: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_user)
+):
+    """
+    Получение всех объектов Task.
+    """
+    task_from_db = await task_crud.get_multi(session, user)
+    if task_from_db is None:
+        raise HTTPException(
+            status_code=404,
+            detail='Задач пока нету.'
+        )
+    return task_from_db
 
 
 @router.get(
@@ -50,7 +72,7 @@ async def get_task(
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_user)
 ):
-    """Получение всех объектов Donation."""
+    """Получение объекта Task."""
     await check_task_exists(task_id, session, user)
     task_from_db = await task_crud.get(task_id, session, user)
     if task_from_db is None:
@@ -84,28 +106,6 @@ async def get_tasks_by_tag(
     return tasks
 
 
-@router.get(
-    '/{tasks}',
-    response_model=list[TaskDB],
-    response_model_exclude_none=True,
-    dependencies=[Depends(current_user)]
-)
-async def get_all_tasks(
-    session: AsyncSession = Depends(get_async_session),
-    user: User = Depends(current_user)
-):
-    """
-    Получение всех объектов Task.
-    """
-    task_from_db = await task_crud.get_multi(session, user)
-    if task_from_db is None:
-        raise HTTPException(
-            status_code=404,
-            detail='Задач пока нету.'
-        )
-    return task_from_db
-
-
 @router.patch(
     '/{task_id}',
     response_model=TaskDB,
@@ -125,7 +125,7 @@ async def partially_update_task(
 
     if obj_in.name is not None:
         await check_valid_name_for_task(obj_in)
-        await check_name_duplicate(obj_in.name, session)
+        await check_name_duplicate_for_task(obj_in.name, session)
 
     task = await task_crud.update(task, obj_in, session, user)
     return task

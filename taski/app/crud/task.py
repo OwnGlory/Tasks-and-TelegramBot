@@ -7,6 +7,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Task, User, Tag
 
+from app.crud.tag import tag_crud
+from app.schemas.tag import TagCreate
+
 
 class CRUDTask:
     """Класс для CRUD операций Task."""
@@ -18,7 +21,7 @@ class CRUDTask:
             self,
             session: AsyncSession,
             user: User
-    ):
+    ) -> list[Task]:
         """Получение нескольких объектов из БД."""
         db_objs = await session.execute(
             select(self.model).where(self.model.user_id == user.id)
@@ -30,7 +33,7 @@ class CRUDTask:
             obj_id: int,
             session: AsyncSession,
             user: User
-    ):
+    ) -> Task:
         """Получение объекта их БД по id."""
         db_obj = await session.execute(
             select(self.model).where(
@@ -45,14 +48,32 @@ class CRUDTask:
             obj_in,
             session: AsyncSession,
             user: User
-    ):
+    ) -> Task:
         """Создание объекта в БД."""
         obj_in_data = obj_in.dict()
         obj_in_data['user_id'] = user.id
+
+        # Удаление поля tags из obj_in_data,
+        # чтобы избежать ошибки при создании задачи
+        tags = obj_in_data.pop('tags', [])
+
+        # Создание задачи
         db_obj = self.model(**obj_in_data)
+
+        # Обработка тегов
+        if tags:
+            for tag_title in tags:
+                tag = await tag_crud.get_tag_id_by_name(tag_title, session)
+                if not tag:
+                    tag = await tag_crud.create(
+                        TagCreate(title=tag_title),
+                        session
+                    )
+                db_obj.tags.append(tag)
         session.add(db_obj)
         await session.commit()
         await session.refresh(db_obj)
+
         return db_obj
 
     async def update(

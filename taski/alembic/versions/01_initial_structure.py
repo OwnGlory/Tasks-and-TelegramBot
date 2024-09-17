@@ -2,7 +2,7 @@
 
 Revision ID: 01
 Revises: 
-Create Date: 2024-09-16 20:53:18.298328
+Create Date: 2024-09-17 14:54:39.072298
 
 """
 from alembic import op
@@ -31,7 +31,9 @@ def upgrade():
     sa.Column('is_active', sa.Boolean(), nullable=False),
     sa.Column('is_superuser', sa.Boolean(), nullable=False),
     sa.Column('is_verified', sa.Boolean(), nullable=False),
-    sa.PrimaryKeyConstraint('id')
+    sa.Column('telegram_username', sa.String(length=150), nullable=True),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('telegram_username')
     )
     op.create_index(op.f('ix_user_email'), 'user', ['email'], unique=True)
     op.create_table('task',
