@@ -1,92 +1,101 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.schemas.donation import (
-    DonationCreate,
-    DonationDB,
-    DonationAllDB,
+from app.schemas.tag import (
+    TagCreate,
+    TagDB,
+    TagAllDB,
 )
 
+from app.api.validators import check_name_duplicate
 from app.core.user import current_superuser, current_user
-from app.models import User
 from app.core.db import get_async_session
-from app.crud.donation import donation_crud
+from app.crud.tag import tag_crud
+
 
 router = APIRouter()
 
 
 @router.post(
     '/',
-    response_model=DonationAllDB,
-    response_model_exclude_none=True,
-)
-async def create_new_donation(
-        donation: DonationCreate,
-        session: AsyncSession = Depends(get_async_session),
-        user: User = Depends(current_user),
-):
-    """Создание объекта Donation - пожертвования."""
-    data_base_work = DataBaseWork(session)
-    new_donation = await donation_crud.create(donation, session, user)
-    await invest_donation(new_donation, data_base_work)
-    return new_donation
-
-
-@router.get(
-    '/',
-    response_model=list[DonationDB],
+    response_model=TagAllDB,
     response_model_exclude_none=True,
     dependencies=[Depends(current_superuser)]
 )
-async def get_all_donation_info(
-    session: AsyncSession = Depends(get_async_session)
+async def create_new_tag(
+        tag: TagCreate,
+        session: AsyncSession = Depends(get_async_session),
 ):
-    """Получение всех объектов Donation."""
-    donation_from_db = await donation_crud.get_multi(session)
-    return donation_from_db
+    """Создание объекта Tag."""
+    await check_name_duplicate(tag.title, session)
+    new_tag = await tag_crud.create(tag, session)
+    return new_tag
 
 
 @router.get(
-    '/{my}',
-    response_model=list[DonationAllDB],
+    '/{Tag_id}',
+    response_model=TagDB,
+    response_model_exclude_none=True,
+    dependencies=[Depends(current_user)]
 )
-async def get_user_donation_info(
-        session: AsyncSession = Depends(get_async_session),
-        my: User = Depends(current_user)
+async def get_task(
+    task_id: int,
+    session: AsyncSession = Depends(get_async_session)
 ):
-    """Получение всех пожертвований пользователя."""
-    user_donation = await donation_crud.get_donations_by_user(
-        session=session, user=my
-    )
-    if user_donation is None:
+    """Получение всех объектов Donation."""
+    task_from_db = await tag_crud.get(task_id, session)
+    if task_from_db is None:
         raise HTTPException(
             status_code=404,
-            detail='Пожертвований пока нету.'
+            detail='Тэгов пока нету.'
         )
-    return user_donation
+    return task_from_db
+
+
+@router.get(
+    '/{tags}',
+    response_model=list[TagDB],
+    response_model_exclude_none=True,
+    dependencies=[Depends(current_user)]
+)
+async def get_all_tasks(
+    session: AsyncSession = Depends(get_async_session),
+):
+    """
+    Получение всех объектов Task.
+    """
+    task_from_db = await tag_crud.get_multi(session)
+    if task_from_db is None:
+        raise HTTPException(
+            status_code=404,
+            detail='Задач пока нету.'
+        )
+    return task_from_db
 
 
 @router.patch(
-    '/{donation_id}'
+    '/{tag_id}',
+    dependencies=[Depends(current_user)]
 )
-async def update_donation(
+async def update_tag(
         session: AsyncSession = Depends(get_async_session),
 ):
-    """Метод для запрета обновления пожертвований."""
+    """Метод для запрета обновления тэгов."""
     raise HTTPException(
         status_code=status.HTTP_404_NOT_FOUND,
-        detail='Нельзя изменять пожертвования!'
+        detail='Нельзя изменять тэги!'
     )
 
 
 @router.delete(
-    '/{donation_id}'
+    '/{tag_id}',
+    dependencies=[Depends(current_user)]
 )
-async def delete_donation(
+async def delete_tag(
         session: AsyncSession = Depends(get_async_session),
 ):
-    """Метод для запрета удаления пожертвований."""
+    """Метод для запрета удаления тэгов."""
     raise HTTPException(
         status_code=status.HTTP_404_NOT_FOUND,
-        detail='Нельзя удалять пожертвования!'
+        detail='Нельзя удалять тэги!'
     )

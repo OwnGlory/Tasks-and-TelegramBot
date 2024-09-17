@@ -2,6 +2,7 @@ from fastapi import APIRouter
 
 from app.core.user import auth_backend, fastapi_users
 from app.schemas.user import UserCreate, UserRead, UserUpdate
+from app.api.endpoints import tg_auth_router
 
 router = APIRouter()
 
@@ -10,6 +11,13 @@ router.include_router(
     prefix='/auth/jwt',
     tags=['auth'],
 )
+
+router.include_router(
+    tg_auth_router,
+    prefix='/auth/telegram',
+    tags=['auth'],
+)
+
 router.include_router(
     fastapi_users.get_register_router(UserRead, UserCreate),
     prefix='/auth',

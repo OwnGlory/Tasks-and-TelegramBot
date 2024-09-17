@@ -1,4 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
 from app.models import Tag
 
@@ -8,6 +9,27 @@ class CRUDTag:
 
     def __init__(self, model):
         self.model = model
+
+    async def get_multi(
+            self,
+            session: AsyncSession
+    ):
+        """Получение нескольких объектов из БД."""
+        db_objs = await session.execute(
+            select(self.model)
+        )
+        return db_objs.scalars().all()
+
+    async def get(
+            self,
+            obj_id: int,
+            session: AsyncSession
+    ):
+        """Получение объекта их БД по id."""
+        db_obj = await session.execute(
+            select(self.model).where(self.model.id == obj_id)
+        )
+        return db_obj.scalars().first()
 
     async def create(
         self,
@@ -25,4 +47,4 @@ class CRUDTag:
         return db_obj
 
 
-donation_crud = CRUDTag(Tag)
+tag_crud = CRUDTag(Tag)

@@ -6,6 +6,8 @@ from pydantic import BaseModel, Field, Extra
 
 class TaskBase(BaseModel):
     """Базовый класс для схем задачи."""
+    name: Optional[str]
+    description: Optional[str]
 
     class Config:
         extra = Extra.forbid
@@ -26,18 +28,16 @@ class TaskCreate(TaskBase):
         description='Уникальное названние задачи'
     )
     description: str = Field(..., min_length=2)
+    user_id: int
 
 
 class TaskUpdate(TaskBase):
     """Схема для обновления задачи."""
-    name: Optional[str]
-    description: Optional[str]
+    user_id: int
 
 
 class TaskDB(BaseModel):
     """Схема для вывода информации о задаче."""
-    name: Optional[str] = Field("Название задачи")
-    description: Optional[str] = Field("Описание задачи")
     id: Optional[int] = Field(0)
     create_date: Optional[datetime]
     update_date: Optional[datetime]

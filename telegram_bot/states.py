@@ -1,9 +1,7 @@
-from aiogram.filters.state import State, StatesGroup
+from aiogram.fsm.state import State, StatesGroup
 
 
-class FSMGift(StatesGroup):
-    input_promocode = State()
-
-
-class FSMInputTime(StatesGroup):
-    input_time = State()
+class AuthState(StatesGroup):
+    waiting_for_username = State()
+    waiting_for_password = State()
+    waiting_for_telegram_username = State()
